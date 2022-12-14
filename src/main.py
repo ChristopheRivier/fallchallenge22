@@ -3,7 +3,6 @@ import math
 
 debug = True
 debug_entry = False
-pond_owner = -10
 # Auto-generated code below aims at helping you parse
 # the standard input according to the problem statement.
 
@@ -14,81 +13,7 @@ def deb(str):
     if debug:
         print(str, file=sys.stderr, flush=True)
 
-
-
-class Game:
-    def __init__(self, w, h, m, r, r_e):
-        self.width = w
-        self.height = h
-        self.my_robot = r
-        self.en_robot = r_e
-        self.map = m
-
-    def get_pos_n(self, robot):
-        return (robot['x'],robot['y']-1)
-
-    def get_pos_s(self, robot):
-        return (robot['x'],robot['y']+1)
-
-    def get_pos_w(self, robot):
-        return (robot['x']-1,robot['y'])
-
-    def get_pos_e(self, robot):
-        return (robot['x']+1,robot['y'])
-
-    def getNorth(self, robot):
-        if robot['y']>0:
-            return self.map[robot['x']][robot['y']-1]
-        return None
-    def getSouth(self, robot):
-        if robot['y']<self.width-1:
-            return self.map[robot['x']][robot['y']+1]
-        return None
-    def getWest(self, robot):
-        if robot['x']>0:
-            return self.map[robot['x']-1][robot['y']]
-        return None
-    def getEast(self, robot):
-        if robot['x']<self.height-1:
-            return self.map[robot['x']+1][robot['y']]
-        return None
-
-    def ponderation(self, brick):
-        if brick is None or brick['scrap_amount']==0:
-            return -1000
-        ret = brick['owner']*pond_owner
-        return ret
-
-    def move_for_one_robot(self, robot):
-        # find best move
-        deb(f"north {robot}")
-        n = self.getNorth(robot)
-        deb(f"s {robot}")
-
-        s = self.getSouth(robot)
-        w = self.getWest(robot)
-        e = self.getEast(robot)
-
-        p_n = self.ponderation(n)
-        p_s = self.ponderation(s)
-        p_w = self.ponderation(w)
-        p_e = self.ponderation(e)
-
-        if p_n >= p_s and p_n >= p_w and p_n >= p_e:
-            return self.get_pos_n(robot)
-        if p_s >= p_n and p_s>=p_w and p_s>= p_e:
-            return self.get_pos_s(robot)
-        if p_e>=p_s and p_e>=p_n and p_e>=p_w:
-            return self.get_pos_e(robot)
-        if p_w>=p_e and p_w>=p_s and p_w>=p_n:
-            return self.get_pos_w(robot)
-
-    def calcul_action(self):
-        r = self.my_robot[0]
-        x, y = self.move_for_one_robot(r)
-
-        print(f"MOVE 1 {r['y']} {r['x']} {y} {x}")
-
+from game import Game
 
 width, height = [int(i) for i in input().split()]
 print_entry(f"{width} {height}")
@@ -116,7 +41,7 @@ while True:
             line.append(a)
         my_map.append(line)
     
-    game = Game(width,height,my_map,my_robot,en_robot)
+    game = Game(width,height,my_map,my_robot,en_robot,my_matter,opp_matter)
 
     game.calcul_action()
     #print(my_map, file=sys.stderr, flush=True)
