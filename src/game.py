@@ -24,18 +24,26 @@ class Game:
     def get_pos_e(self, robot):
         return (robot['x']+1,robot['y'])
 
+    def get_north(self, x, y):
+        return (x,y-1)
     def getNorth(self, x, y):
         if y>0:
             return self.map[x][y-1]
         return None
+    def get_south(self, x, y):
+        return x,y+1
     def getSouth(self, x, y):
         if y<self.width-1:
             return self.map[x][y+1]
         return None
+    def get_west(self, x, y):
+        return x-1, y
     def getWest(self, x, y):
         if x>0:
             return self.map[x-1][y]
         return None
+    def get_east(self, x, y):
+        return x+1, y
     def getEast(self, x, y):
         if x<self.height-1:
             return self.map[x+1][y]
@@ -46,7 +54,7 @@ class Game:
             return -1000
         ret = 0
         if brick['owner']!=1:
-            ret = brick['scrap_amount'] * pond_owner
+            ret = pond_owner
         return ret
 
     def ponderation_robot(self, brick, robot):
@@ -79,26 +87,41 @@ class Game:
 
     def get_build(self):
         # find where to create new robot
-        max_pond = -1
-        buildx,buildy=-1,-1
+        def poid_robot(el):
+            return el['poid_robot']
+        self.calcul_poid_on_map()
+        self.lst_poid.sort(key=poid_robot)
+        return f"SPAWN 1 {self.lst_poid[0]['y']} {self.lst_poid[0]['x']};"
+
+    def get_poid(self, x, y, iteration=4):
+        pond = 0
+        if iteration==0:
+            return self.ponderation(self.map[x][y])
+        iteration = iteration - 1
+        if self.getNorth(x,y) is not None:
+            pond += self.get_poid(*(self.get_north(x,y)), iteration)/2
+        if self.getSouth(x,y) is not None:
+            pond += self.get_poid(*(self.get_south(x,y)), iteration)/2
+        if self.getEast(x,y) is not None:
+            pond += self.get_poid(*(self.get_east(x,y)), iteration)/2
+        if self.getWest(x,y) is not None:
+            pond += self.get_poid(*(self.get_west(x,y)), iteration)/2
+        return pond
+                
+    def calcul_poid_on_map(self):
+        self.lst_poid = list()
         for i in range(self.height):
           for j in range(self.width):
+            a = {'y':j, 'x':i}
             if self.map[i][j]['owner']==1:
-                # calcul a ponderation for the each cell.
-                pond = 0
-                if self.getNorth(i,j) is not None:
-                    pond += self.ponderation(self.getNorth(i,j))
-                if self.getSouth(i,j) is not None:
-                    pond += self.ponderation(self.getSouth(i,j))
-                if self.getEast(i,j) is not None:
-                    pond += self.ponderation(self.getEast(i,j))
-                if self.getWest(i,j) is not None:
-                    pond += self.ponderation(self.getWest(i,j))
-                if max_pond<pond:
-                    max_pond = pond
-                    buildx = i
-                    buildy = j
-        return f"SPAWN 1 {buildy} {buildx};"
+                a['poid_robot']=self.get_poid(i,j)
+                a['poid_recycle']=self.get_poid(i,j)
+            else:
+                a['poid_robot']=0
+                a['poid_recycle']=0
+            
+            self.lst_poid.append(a)
+        
 
     def calcul_action(self):
         actions = ""
