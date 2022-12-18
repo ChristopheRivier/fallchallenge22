@@ -1,3 +1,5 @@
+# specific for my project
+perlCodeGen.py
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
