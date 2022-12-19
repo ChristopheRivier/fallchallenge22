@@ -1,7 +1,13 @@
 
+import sys #exclude
 pond_owner = 1
 pond_units = 2
 
+debug = True #exclude
+
+def deb(str):
+    if debug:
+        print(str, file=sys.stderr, flush=True)
 class Game:
     def __init__(self, w, h, m, r, r_e,matter,op_matt):
         self.width = w
@@ -62,18 +68,26 @@ class Game:
         w = self.getWest(robot['x'], robot['y'])
         e = self.getEast(robot['x'], robot['y'])
 
-        p_n = self.ponderation_robot(n,robot)
-        p_s = self.ponderation_robot(s,robot)
-        p_w = self.ponderation_robot(w,robot)
-        p_e = self.ponderation_robot(e,robot)
+        p_n = self.map[n['x']][n['y']]['chemin'] if n else None
+        p_s = self.map[s['x']][s['y']]['chemin'] if s else None
+        p_w = self.map[w['x']][w['y']]['chemin'] if w else None
+        p_e = self.map[e['x']][e['y']]['chemin'] if e else None
 
-        if p_n >= p_s and p_n >= p_w and p_n >= p_e:
+        if (p_n is not None and (p_s is None or p_n <= p_s ) and
+                                (p_w is None or p_n <= p_w ) and 
+                                (p_e is None or p_n<= p_e)):
             x,y = self.get_pos_n(robot)
-        if p_s >= p_n and p_s>=p_w and p_s>= p_e:
+        if (p_s is not None and (p_n is None or p_s <= p_n) and
+                                (p_w is None or p_s<=p_w) and 
+                                (p_e is None or p_s<= p_e)):
             x,y = self.get_pos_s(robot)
-        if p_e>=p_s and p_e>=p_n and p_e>=p_w:
+        if (p_e is not None and (p_s is None or p_e<=p_s) and
+                                (p_n is None or p_e<=p_n) and 
+                                (p_w is None or p_e<=p_w)):
             x,y = self.get_pos_e(robot)
-        if p_w>=p_e and p_w>=p_s and p_w>=p_n:
+        if (p_w is not None and (p_e is None or p_w<=p_e) and
+                                (p_s is None or p_w<=p_s) and 
+                                (p_n is None or p_w<=p_n)):
             x,y = self.get_pos_w(robot)
         return f"MOVE {robot['units']} {robot['y']} {robot['x']} {y} {x}"
 
@@ -100,8 +114,73 @@ class Game:
                     buildy = j
         return f"SPAWN 1 {buildy} {buildx};"
 
+    def get_nb_case_interessante(self, brick) -> int:
+        ret = 0
+        if brick and self.cell_attaquable(brick):
+            ret+=1
+        return ret
+
+    def cell_attaquable(self, brick):
+        return brick['owner']!=1 and brick['recycler']==0 and brick['scrap_amount']>0
+
+    def calc_map(self):
+        """ Calcul de distance entre la zone qui m'appartient et la zone vide ou adversaire 
+            ajout information dans la brick
+            nb de case vide ou appartenant a l'adversaire
+            calcul du chemin le plus court
+        """
+        tuple_xy = list()
+        for i in range(self.height):
+          for j in range(self.width):
+            nb_case_interessante=0
+            if self.getNorth(i,j):
+                nb_case_interessante += self.get_nb_case_interessante(self.getNorth(i,j))
+            if self.getSouth(i,j):
+                nb_case_interessante += self.get_nb_case_interessante(self.getSouth(i,j))
+            if self.getEast(i,j):
+                nb_case_interessante += self.get_nb_case_interessante(self.getEast(i,j))
+            if self.getWest(i,j) :
+                nb_case_interessante += self.get_nb_case_interessante(self.getWest(i,j))
+            self.map[i][j]['case_autour']=nb_case_interessante
+            if self.cell_attaquable(self.map[i][j]):
+                self.map[i][j]['chemin']=0
+            elif nb_case_interessante>0:
+                self.map[i][j]['chemin']=1
+            else:
+                tuple_xy.append((i,j))
+        self.update_chemin(tuple_xy)
+
+    def update_chemin(self, tuple_xy):
+        autre_list = list()
+        for i,j in tuple_xy:
+            chemin=None
+            if self.getNorth(i,j):
+                if('chemin' in self.getNorth(i,j)):
+                    cc = self.getNorth(i,j)['chemin']
+                    chemin = cc+1 if chemin is None or chemin>cc else chemin
+            if self.getSouth(i,j):
+                if('chemin' in self.getSouth(i,j)):
+                    cc = self.getSouth(i,j)['chemin']
+                    chemin = cc+1 if chemin is None or chemin>cc else chemin
+            if self.getEast(i,j):
+                if('chemin' in self.getEast(i,j)):
+                    cc = self.getEast(i,j)['chemin']
+                    chemin = cc+1 if chemin is None or chemin>cc else chemin
+            if self.getWest(i,j) :
+                if('chemin' in self.getWest(i,j)):
+                    cc = self.getWest(i,j)['chemin']
+                    chemin = cc+1 if chemin is None or chemin>cc else chemin
+            if chemin:
+                self.map[i][j]['chemin']=chemin
+            else:
+                autre_list.append((i,j))
+        if autre_list:
+            self.update_chemin(autre_list)
+
+        
     def calcul_action(self):
         actions = ""
+        self.calc_map()
         for r in self.my_robot:
             sep="" if actions == "" else ";"
             actions = f"{actions}{sep}{self.move_robot(r)}"

@@ -31,7 +31,7 @@ while True:
             # owner: 1 = me, 0 = foe, -1 = neutral
             a={}
             a['scrap_amount'], a['owner'], a['units'], a['recycler'], a['can_build'], a['can_spawn'], a['in_range_of_recycler'] = [int(k) for k in input().split()]
-
+            a['x'], a['y'] = i, j
             print_entry(f"{a['scrap_amount']} {a['owner']} {a['units']} {a['recycler']} {a['can_build']} {a['can_spawn']} {a['in_range_of_recycler']}")
             if a['owner']==1 and a['units']>0:
                 # it is my robot

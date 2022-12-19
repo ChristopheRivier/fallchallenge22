@@ -2,13 +2,14 @@ import pytest
 
 from game import Game
 
-def test_game():
+
+def init_data(filename, w,h,mat,opp)-> Game:
     my_robot = list()
     en_robot = list()
-    width,height = 13,6
-    my_matter,opp_matter = 80,70
+    width,height = w,h
+    my_matter,opp_matter = mat, opp
     my_map = list()
-    f = open("src/sample1.txt", "r")
+    f = open(filename, "r")
 
     for i in range(height):
         line = list()
@@ -16,6 +17,7 @@ def test_game():
             # owner: 1 = me, 0 = foe, -1 = neutral
             a={}
             a['scrap_amount'], a['owner'], a['units'], a['recycler'], a['can_build'], a['can_spawn'], a['in_range_of_recycler'] = [int(k) for k in f.readline().split()]
+            a['x'], a['y'] = i, j
             if a['owner']==1 and a['units']>0:
                 # it is my robot
                 my_robot.append({ 'x': i, 'y': j, 'units': a['units']})
@@ -25,5 +27,12 @@ def test_game():
         my_map.append(line)
 
     game = Game(width,height,my_map,my_robot,en_robot,my_matter,opp_matter)
+    return game
+
+def test_game():
+    
+    #game = init_data("src/sample1.txt", 13,6,80,70)
+    game = init_data("src/test_data/map_init.txt", 17,8,10,10)
+    
     game.calcul_action()
 
