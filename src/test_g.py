@@ -10,7 +10,7 @@ def init_data(filename, w,h,mat,opp)-> Game:
     my_matter,opp_matter = mat, opp
     my_map = list()
     f = open(filename, "r")
-
+    game = Game(width, height)
     for i in range(height):
         line = list()
         for j in range(width):
@@ -26,7 +26,7 @@ def init_data(filename, w,h,mat,opp)-> Game:
             line.append(a)
         my_map.append(line)
 
-    game = Game(width,height,my_map,my_robot,en_robot,my_matter,opp_matter)
+    game.init_round(my_map,my_robot,en_robot,my_matter,opp_matter)
     return game
 
 def test_game():
@@ -36,3 +36,11 @@ def test_game():
     
     game.calcul_action()
 
+
+
+def test_game():
+    
+    #game = init_data("src/sample1.txt", 13,6,80,70)
+    game = init_data("src/test_data/test_spawn", 14,7,10,29)
+    
+    game.calcul_action()

@@ -2,7 +2,7 @@
 import sys #exclude
 import math #exclude
 pond_owner = 1
-pond_scrap = 0.5
+pond_scrap = 1
 pond_units = 2
 pond_chemin = 1
 pond_dist = 0.5
@@ -60,20 +60,13 @@ class Game:
 
     def ponderation(self, brick):
         if brick is None or brick['scrap_amount']==0:
-            return -1000
+            return -1
         ret = 0
         if self.cell_attaquable(brick):
-            if self.cell_attaquable(brick=brick):
-                if brick['owner']==-1:
-                    ret += brick['units']*pond_owner
-                else:
-                    ret += brick['scrap_amount'] * pond_scrap
-        return ret
-
-    def ponderation_robot(self, brick, robot):
-        ret = self.ponderation(brick)
-        if brick and brick['owner']!=1:
-            ret += (robot['units'] - brick['units'])*pond_units
+            if brick['owner']==0:
+                ret += brick['units']*pond_owner
+            else:
+                ret += brick['scrap_amount'] * pond_scrap
         return ret
 
     def move_robot(self, robot):
@@ -96,7 +89,6 @@ class Game:
             p_s = self.map[s['x']][s['y']]['chemin']*pond_chemin + distance(s['x'],s['y'],target_x,target_y)*pond_dist if s else None
             p_w = self.map[w['x']][w['y']]['chemin']*pond_chemin + distance(w['x'],w['y'],target_x,target_y)*pond_dist if w else None
             p_e = self.map[e['x']][e['y']]['chemin']*pond_chemin + distance(e['x'],e['y'],target_x,target_y)*pond_dist if e else None
-
             if (p_n is not None and (p_s is None or p_n <= p_s ) and
                                     (p_w is None or p_n <= p_w ) and 
                                     (p_e is None or p_n<= p_e)):
@@ -150,13 +142,14 @@ class Game:
             return el['ponderation']
         # do we have the middle of the map
         find = False
+        ret = ""
         for x in range(self.height):
             brick = self.map[x][self.center_y]
             if brick['owner']==1 and brick['units']==0 and brick['recycler']==0:
                 find=True
                 break
         if find:
-            return f"BUILD {self.center_y} {x};"
+            ret += f"BUILD {self.center_y} {x};"
         # find where to create new robot
         lst_pond = list()
         for i in range(self.height):
@@ -179,7 +172,6 @@ class Game:
                 lst_pond.append(a)
         lst_pond.sort(key=get_ponderation,reverse=True)
         ff = 0
-        ret = ""
         while self.my_matter>=10:
             ret = f"{ret}SPAWN 1 {lst_pond[ff]['y']} {lst_pond[ff]['x']};"
             ff += 1
@@ -217,6 +209,8 @@ class Game:
             self.map[i][j]['case_autour']=nb_case_interessante
             if self.cell_attaquable(self.map[i][j]):
                 self.map[i][j]['chemin']=0
+            elif self.map[i][j]['recycler']==1 or self.map[i][j]['scrap_amount']==0:
+                self.map[i][j]['chemin']=100
             elif nb_case_interessante>0:
                 self.map[i][j]['chemin']=1
             else:
@@ -259,7 +253,7 @@ class Game:
             actions = f"{actions}{sep}{self.move_robot(r)}"
         if actions=="":
             actions = "WAIT"
-        if self.my_matter>10:
+        if self.my_matter>=10:
             actions = f"{self.get_build()}{actions}"
         print(actions)
 
