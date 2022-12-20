@@ -2,6 +2,7 @@
 import sys #exclude
 import math #exclude
 pond_owner = 1
+pond_scrap = 0.5
 pond_units = 2
 pond_chemin = 1
 pond_dist = 0.5
@@ -61,8 +62,12 @@ class Game:
         if brick is None or brick['scrap_amount']==0:
             return -1000
         ret = 0
-        if brick['owner']!=1 and brick['owner']!=2:
-            ret = brick['scrap_amount'] * pond_owner
+        if self.cell_attaquable(brick):
+            if self.cell_attaquable(brick=brick):
+                if brick['owner']==-1:
+                    ret += brick['units']*pond_owner
+                else:
+                    ret += brick['scrap_amount'] * pond_scrap
         return ret
 
     def ponderation_robot(self, brick, robot):
@@ -141,7 +146,8 @@ class Game:
         return ret
 
     def get_build(self):
-
+        def get_ponderation(el):
+            return el['ponderation']
         # do we have the middle of the map
         find = False
         for x in range(self.height):
@@ -152,8 +158,7 @@ class Game:
         if find:
             return f"BUILD {self.center_y} {x};"
         # find where to create new robot
-        max_pond = -1
-        buildx,buildy=-1,-1
+        lst_pond = list()
         for i in range(self.height):
           for j in range(self.width):
             if self.map[i][j]['owner']==1:
@@ -167,11 +172,20 @@ class Game:
                     pond += self.ponderation(self.getEast(i,j))
                 if self.getWest(i,j) is not None:
                     pond += self.ponderation(self.getWest(i,j))
-                if max_pond<pond:
-                    max_pond = pond
-                    buildx = i
-                    buildy = j
-        return f"SPAWN 1 {buildy} {buildx};"
+                a = {}
+                a['x']=i
+                a['y']=j
+                a['ponderation']=pond
+                lst_pond.append(a)
+        lst_pond.sort(key=get_ponderation,reverse=True)
+        ff = 0
+        ret = ""
+        while self.my_matter>=10:
+            ret = f"{ret}SPAWN 1 {lst_pond[ff]['y']} {lst_pond[ff]['x']};"
+            ff += 1
+            self.my_matter-=10
+
+        return ret
 
     def get_nb_case_interessante(self, brick) -> int:
         ret = 0
