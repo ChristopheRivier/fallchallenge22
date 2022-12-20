@@ -3,7 +3,8 @@ import sys #exclude
 import math #exclude
 pond_owner = 1
 pond_units = 2
-
+pond_chemin = 1
+pond_dist = 0.5
 debug = True #exclude
 
 def distance(x,y, x1,y1):
@@ -86,10 +87,10 @@ class Game:
                 target_x=robot['x']
                 target_y=robot['y']
 
-            p_n = self.map[n['x']][n['y']]['chemin']/distance(n['x'],n['y'],target_x,target_y) if n else None
-            p_s = self.map[s['x']][s['y']]['chemin']/distance(s['x'],s['y'],target_x,target_y) if s else None
-            p_w = self.map[w['x']][w['y']]['chemin']/distance(w['x'],w['y'],target_x,target_y) if w else None
-            p_e = self.map[e['x']][e['y']]['chemin']/distance(e['x'],e['y'],target_x,target_y) if e else None
+            p_n = self.map[n['x']][n['y']]['chemin']*pond_chemin + distance(n['x'],n['y'],target_x,target_y)*pond_dist if n else None
+            p_s = self.map[s['x']][s['y']]['chemin']*pond_chemin + distance(s['x'],s['y'],target_x,target_y)*pond_dist if s else None
+            p_w = self.map[w['x']][w['y']]['chemin']*pond_chemin + distance(w['x'],w['y'],target_x,target_y)*pond_dist if w else None
+            p_e = self.map[e['x']][e['y']]['chemin']*pond_chemin + distance(e['x'],e['y'],target_x,target_y)*pond_dist if e else None
 
             if (p_n is not None and (p_s is None or p_n <= p_s ) and
                                     (p_w is None or p_n <= p_w ) and 
