@@ -1,22 +1,31 @@
 
 import sys #exclude
+import math #exclude
 pond_owner = 1
 pond_units = 2
 
 debug = True #exclude
 
+def distance(x,y, x1,y1):
+    return math.sqrt((x-x1)**2+(y-y1)**2)
 def deb(str):
     if debug:
         print(str, file=sys.stderr, flush=True)
 class Game:
-    def __init__(self, w, h, m, r, r_e,matter,op_matt):
+    def __init__(self, w, h):    
         self.width = w
         self.height = h
+        self.nb_of_round = 0
+        self.center_x = int(self.height/2)
+        self.center_y = int(self.width/2)
+
+    def init_round(self, m, r, r_e,matter,op_matt):
         self.my_robot = r
         self.en_robot = r_e
         self.map = m
         self.my_matter = matter
         self.opp_matter = op_matt
+        self.nb_of_round += 1
 
     def get_pos_n(self, robot):
         return (robot['x'],robot['y']-1)
@@ -51,7 +60,7 @@ class Game:
         if brick is None or brick['scrap_amount']==0:
             return -1000
         ret = 0
-        if brick['owner']!=1:
+        if brick['owner']!=1 and brick['owner']!=2:
             ret = brick['scrap_amount'] * pond_owner
         return ret
 
@@ -63,35 +72,84 @@ class Game:
 
     def move_robot(self, robot):
         # find best move
-        n = self.getNorth(robot['x'], robot['y'])
-        s = self.getSouth(robot['x'], robot['y'])
-        w = self.getWest(robot['x'], robot['y'])
-        e = self.getEast(robot['x'], robot['y'])
+        tuple_move = set()
+        for num_robot in range(robot['units']):
+            n = self.getNorth(robot['x'], robot['y'])
+            s = self.getSouth(robot['x'], robot['y'])
+            w = self.getWest(robot['x'], robot['y'])
+            e = self.getEast(robot['x'], robot['y'])
 
-        p_n = self.map[n['x']][n['y']]['chemin'] if n else None
-        p_s = self.map[s['x']][s['y']]['chemin'] if s else None
-        p_w = self.map[w['x']][w['y']]['chemin'] if w else None
-        p_e = self.map[e['x']][e['y']]['chemin'] if e else None
+            if self.nb_of_round<20:
+                target_x=self.center_x
+                target_y=self.center_y
+            else:
+                target_x=robot['x']
+                target_y=robot['y']
 
-        if (p_n is not None and (p_s is None or p_n <= p_s ) and
-                                (p_w is None or p_n <= p_w ) and 
-                                (p_e is None or p_n<= p_e)):
-            x,y = self.get_pos_n(robot)
-        if (p_s is not None and (p_n is None or p_s <= p_n) and
-                                (p_w is None or p_s<=p_w) and 
-                                (p_e is None or p_s<= p_e)):
-            x,y = self.get_pos_s(robot)
-        if (p_e is not None and (p_s is None or p_e<=p_s) and
-                                (p_n is None or p_e<=p_n) and 
-                                (p_w is None or p_e<=p_w)):
-            x,y = self.get_pos_e(robot)
-        if (p_w is not None and (p_e is None or p_w<=p_e) and
-                                (p_s is None or p_w<=p_s) and 
-                                (p_n is None or p_w<=p_n)):
-            x,y = self.get_pos_w(robot)
-        return f"MOVE {robot['units']} {robot['y']} {robot['x']} {y} {x}"
+            p_n = self.map[n['x']][n['y']]['chemin']/distance(n['x'],n['y'],target_x,target_y) if n else None
+            p_s = self.map[s['x']][s['y']]['chemin']/distance(s['x'],s['y'],target_x,target_y) if s else None
+            p_w = self.map[w['x']][w['y']]['chemin']/distance(w['x'],w['y'],target_x,target_y) if w else None
+            p_e = self.map[e['x']][e['y']]['chemin']/distance(e['x'],e['y'],target_x,target_y) if e else None
+
+            if (p_n is not None and (p_s is None or p_n <= p_s ) and
+                                    (p_w is None or p_n <= p_w ) and 
+                                    (p_e is None or p_n<= p_e)):
+                x,y = self.get_pos_n(robot)
+            if (p_s is not None and (p_n is None or p_s <= p_n) and
+                                    (p_w is None or p_s<=p_w) and 
+                                    (p_e is None or p_s<= p_e)):
+                x,y = self.get_pos_s(robot)
+            if (p_e is not None and (p_s is None or p_e<=p_s) and
+                                    (p_n is None or p_e<=p_n) and 
+                                    (p_w is None or p_e<=p_w)):
+                x,y = self.get_pos_e(robot)
+            if (p_w is not None and (p_e is None or p_w<=p_e) and
+                                    (p_s is None or p_w<=p_s) and 
+                                    (p_n is None or p_w<=p_n)):
+                x,y = self.get_pos_w(robot)
+            # need to store where I go to
+            if self.map[x][y]['chemin']==0:
+                # need to recalculate position
+                self.map[x][y]['chemin']=None
+
+                self.map[x][y]['owner']=2
+                tuple_xy = list()
+                if n:
+                    self.map[n['x']][n['y']]['chemin']=None
+                    tuple_xy.append((n['x'],n['y']))
+                if s:
+                    self.map[s['x']][s['y']]['chemin']=None
+                    tuple_xy.append((s['x'],s['y']))
+                if e:
+                    self.map[e['x']][e['y']]['chemin']=None
+                    tuple_xy.append((e['x'],e['y']))
+                if w:
+                    self.map[w['x']][w['y']]['chemin']=None
+                    tuple_xy.append((w['x'],w['y']))
+                tuple_xy.append((x,y))
+                self.update_chemin(tuple_xy)
+            tuple_move.update([(x,y)])
+        ret=""
+        nb_units = robot['units']
+        nb_units = int(nb_units/len(tuple_move))
+
+        for x,y in tuple_move:
+            if ret:
+                ret = f"{ret};"
+            ret = f"MOVE {nb_units} {robot['y']} {robot['x']} {y} {x}"
+        return ret
 
     def get_build(self):
+
+        # do we have the middle of the map
+        find = False
+        for x in range(self.height):
+            brick = self.map[x][self.center_y]
+            if brick['owner']==1 and brick['units']==0 and brick['recycler']==0:
+                find=True
+                break
+        if find:
+            return f"BUILD {self.center_y} {x};"
         # find where to create new robot
         max_pond = -1
         buildx,buildy=-1,-1

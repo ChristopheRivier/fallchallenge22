@@ -17,7 +17,7 @@ from game import Game
 
 width, height = [int(i) for i in input().split()]
 print_entry(f"{width} {height}")
-
+game = Game(width,height)
 # game loop
 while True:
     my_robot = list()
@@ -41,7 +41,7 @@ while True:
             line.append(a)
         my_map.append(line)
     
-    game = Game(width,height,my_map,my_robot,en_robot,my_matter,opp_matter)
+    game.init_round(my_map,my_robot,en_robot,my_matter,opp_matter)
 
     game.calcul_action()
 
