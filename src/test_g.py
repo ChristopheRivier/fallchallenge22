@@ -44,3 +44,16 @@ def test_game():
     game = init_data("src/test_data/test_spawn", 14,7,10,29)
     
     game.calcul_action()
+
+
+def test_bloc():
+    
+    #game = init_data("src/sample1.txt", 13,6,80,70)
+    game = init_data("src/test_data/blocage", 16,8,16,16)
+    game.nb_of_round=32
+    game.calcul_action()
+
+def test_stay():
+    game = init_data("src/test_data/stay", 23,11,15,40)
+    game.nb_of_round=32
+    game.calcul_action()

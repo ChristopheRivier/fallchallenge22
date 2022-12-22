@@ -27,7 +27,7 @@ class Game:
         self.map = m
         self.my_matter = matter
         self.opp_matter = op_matt
-        self.nb_of_round += 1
+        self.nb_of_round = self.nb_of_round + 1
 
     def get_pos_n(self, robot):
         return (robot['x'],robot['y']-1)
@@ -70,6 +70,8 @@ class Game:
         return ret
 
     def move_robot(self, robot):
+        def is_move(b):
+            return b and self.map[b['x']][b['y']]['scrap_amount']>0 and self.map[b['x']][b['y']]['recycler']==0
         # find best move
         tuple_move = set()
         for num_robot in range(robot['units']):
@@ -77,18 +79,20 @@ class Game:
             s = self.getSouth(robot['x'], robot['y'])
             w = self.getWest(robot['x'], robot['y'])
             e = self.getEast(robot['x'], robot['y'])
-
+            global pond_dist
             if self.nb_of_round<20:
                 target_x=self.center_x
                 target_y=self.center_y
             else:
+                pond_dist=0
                 target_x=robot['x']
                 target_y=robot['y']
 
-            p_n = self.map[n['x']][n['y']]['chemin']*pond_chemin + distance(n['x'],n['y'],target_x,target_y)*pond_dist if n else None
-            p_s = self.map[s['x']][s['y']]['chemin']*pond_chemin + distance(s['x'],s['y'],target_x,target_y)*pond_dist if s else None
-            p_w = self.map[w['x']][w['y']]['chemin']*pond_chemin + distance(w['x'],w['y'],target_x,target_y)*pond_dist if w else None
-            p_e = self.map[e['x']][e['y']]['chemin']*pond_chemin + distance(e['x'],e['y'],target_x,target_y)*pond_dist if e else None
+            p_n = self.map[n['x']][n['y']]['chemin']*pond_chemin + distance(n['x'],n['y'],target_x,target_y)*pond_dist if is_move(n) else None
+            p_s = self.map[s['x']][s['y']]['chemin']*pond_chemin + distance(s['x'],s['y'],target_x,target_y)*pond_dist if is_move(s) else None
+            p_w = self.map[w['x']][w['y']]['chemin']*pond_chemin + distance(w['x'],w['y'],target_x,target_y)*pond_dist if is_move(w) else None
+            p_e = self.map[e['x']][e['y']]['chemin']*pond_chemin + distance(e['x'],e['y'],target_x,target_y)*pond_dist if is_move(e) else None
+            x,y=-1,-1
             if (p_n is not None and (p_s is None or p_n <= p_s ) and
                                     (p_w is None or p_n <= p_w ) and 
                                     (p_e is None or p_n<= p_e)):
@@ -106,7 +110,7 @@ class Game:
                                     (p_n is None or p_w<=p_n)):
                 x,y = self.get_pos_w(robot)
             # need to store where I go to
-            if self.map[x][y]['chemin']==0:
+            if x!=-1 and self.map[x][y]['chemin']==0:
                 # need to recalculate position
                 self.map[x][y]['chemin']=None
 
@@ -131,25 +135,17 @@ class Game:
         nb_units = robot['units']
         nb_units = int(nb_units/len(tuple_move))
 
-        for x,y in tuple_move:
+        for xm,ym in tuple_move:
             if ret:
                 ret = f"{ret};"
-            ret = f"MOVE {nb_units} {robot['y']} {robot['x']} {y} {x}"
+            ret = f"{ret}MOVE {nb_units} {robot['y']} {robot['x']} {ym} {xm}"
         return ret
 
     def get_build(self):
         def get_ponderation(el):
             return el['ponderation']
-        # do we have the middle of the map
-        find = False
-        ret = ""
-        for x in range(self.height):
-            brick = self.map[x][self.center_y]
-            if brick['owner']==1 and brick['units']==0 and brick['recycler']==0:
-                find=True
-                break
-        if find:
-            ret += f"BUILD {self.center_y} {x};"
+        def get_recycler(el):
+            return el['recycler_scrap']
         # find where to create new robot
         lst_pond = list()
         for i in range(self.height):
@@ -169,9 +165,29 @@ class Game:
                 a['x']=i
                 a['y']=j
                 a['ponderation']=pond
+                if self.get_truc(i,j,'units')==0 and self.get_truc(i,j,'recycler')==0:
+                    a['recycler_scrap']=self.get_truc(i,j,'recycler_scrap')
+                else:
+                    a['recycler_scrap']=0
                 lst_pond.append(a)
-        lst_pond.sort(key=get_ponderation,reverse=True)
+        lst_pond.sort(key=get_recycler,reverse=True)
+        # do we have the middle of the map
+        find = True
+        ret = ""
         ff = 0
+        #for x in range(self.height):
+        #    brick = self.map[x][self.center_y]
+        #    if brick['owner']==1 and brick['units']==0 and brick['recycler']==0:
+        #        find=True
+        #        break
+        #if find:
+            #ret += f"BUILD {self.center_y} {x};"
+        if lst_pond[ff]['recycler_scrap']>30:
+            ret += f"BUILD {lst_pond[ff]['y']} {lst_pond[ff]['x']};"
+            self.my_matter-=10
+            ff = 0
+            lst_pond.pop(0)
+        lst_pond.sort(key=get_ponderation,reverse=True)
         while self.my_matter>=10:
             ret = f"{ret}SPAWN 1 {lst_pond[ff]['y']} {lst_pond[ff]['x']};"
             ff += 1
@@ -184,6 +200,8 @@ class Game:
         if brick and self.cell_attaquable(brick):
             ret+=1
         return ret
+    def get_truc(self, x, y, truc):
+        return self.map[x][y][truc]
 
     def cell_attaquable(self, brick):
         return brick['owner']!=1 and brick['recycler']==0 and brick['scrap_amount']>0
@@ -198,15 +216,25 @@ class Game:
         for i in range(self.height):
           for j in range(self.width):
             nb_case_interessante=0
+            scrap = 0
             if self.getNorth(i,j):
-                nb_case_interessante += self.get_nb_case_interessante(self.getNorth(i,j))
+                b=self.getNorth(i,j)
+                nb_case_interessante += self.get_nb_case_interessante(b)
+                scrap += self.get_truc(b['x'],b['y'],'scrap_amount')
             if self.getSouth(i,j):
-                nb_case_interessante += self.get_nb_case_interessante(self.getSouth(i,j))
+                b=self.getSouth(i,j)
+                nb_case_interessante += self.get_nb_case_interessante(b)
+                scrap += self.get_truc(b['x'],b['y'],'scrap_amount')
             if self.getEast(i,j):
-                nb_case_interessante += self.get_nb_case_interessante(self.getEast(i,j))
+                b=self.getEast(i,j)
+                nb_case_interessante += self.get_nb_case_interessante(b)
+                scrap += self.get_truc(b['x'],b['y'],'scrap_amount')
             if self.getWest(i,j) :
-                nb_case_interessante += self.get_nb_case_interessante(self.getWest(i,j))
+                b=self.getWest(i,j)
+                nb_case_interessante += self.get_nb_case_interessante(b)
+                scrap += self.get_truc(b['x'],b['y'],'scrap_amount')
             self.map[i][j]['case_autour']=nb_case_interessante
+            self.map[i][j]['recycler_scrap']=scrap
             if self.cell_attaquable(self.map[i][j]):
                 self.map[i][j]['chemin']=0
             elif self.map[i][j]['recycler']==1 or self.map[i][j]['scrap_amount']==0:
@@ -217,32 +245,39 @@ class Game:
                 tuple_xy.append((i,j))
         self.update_chemin(tuple_xy)
 
-    def update_chemin(self, tuple_xy):
+    def update_chemin(self, tuple_xy, recurs=10):
+        def is_move(b):
+            return b and b['scrap_amount']>0 and b['recycler']==0
+ 
         autre_list = list()
         for i,j in tuple_xy:
             chemin=None
             if self.getNorth(i,j):
-                if('chemin' in self.getNorth(i,j)):
+                if(is_move(self.getNorth(i,j)) and 'chemin' in self.getNorth(i,j)):
                     cc = self.getNorth(i,j)['chemin']
                     chemin = cc+1 if chemin is None or chemin>cc else chemin
             if self.getSouth(i,j):
-                if('chemin' in self.getSouth(i,j)):
+                if(is_move(self.getSouth(i,j)) and 'chemin' in self.getSouth(i,j)):
                     cc = self.getSouth(i,j)['chemin']
                     chemin = cc+1 if chemin is None or chemin>cc else chemin
             if self.getEast(i,j):
-                if('chemin' in self.getEast(i,j)):
+                if(is_move(self.getEast(i,j)) and 'chemin' in self.getEast(i,j)):
                     cc = self.getEast(i,j)['chemin']
                     chemin = cc+1 if chemin is None or chemin>cc else chemin
             if self.getWest(i,j) :
-                if('chemin' in self.getWest(i,j)):
+                if(is_move(self.getWest(i,j)) and 'chemin' in self.getWest(i,j)):
                     cc = self.getWest(i,j)['chemin']
                     chemin = cc+1 if chemin is None or chemin>cc else chemin
             if chemin:
                 self.map[i][j]['chemin']=chemin
             else:
                 autre_list.append((i,j))
-        if autre_list:
-            self.update_chemin(autre_list)
+        recurs -= 1
+        if autre_list and recurs>0:
+            self.update_chemin(autre_list, recurs)
+        else:
+            for i,j in tuple_xy:
+                self.map[i][j]['chemin']=10
 
         
     def calcul_action(self):
