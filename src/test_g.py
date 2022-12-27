@@ -38,7 +38,7 @@ def test_game():
 
 
 
-def test_game():
+def test_game2():
     
     #game = init_data("src/sample1.txt", 13,6,80,70)
     game = init_data("src/test_data/test_spawn", 14,7,10,29)
@@ -56,4 +56,10 @@ def test_bloc():
 def test_stay():
     game = init_data("src/test_data/stay", 23,11,15,40)
     game.nb_of_round=32
+    game.calcul_action()
+
+
+def test_gain():
+    game = init_data("src/test_data/test_", 15,7,10,10)
+    game.nb_of_round=5
     game.calcul_action()

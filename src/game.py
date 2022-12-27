@@ -1,11 +1,14 @@
 
 import sys #exclude
 import math #exclude
-pond_owner = 1
+pond_owner = -0.5
 pond_scrap = 1
-pond_units = 2
 pond_chemin = 1
 pond_dist = 0.5
+pond_autour = 0.4
+pond_moi = -1
+can_i_build = False
+nb_matter_to_build = 25
 debug = True #exclude
 
 def distance(x,y, x1,y1):
@@ -79,19 +82,26 @@ class Game:
             s = self.getSouth(robot['x'], robot['y'])
             w = self.getWest(robot['x'], robot['y'])
             e = self.getEast(robot['x'], robot['y'])
-            global pond_dist
-            if self.nb_of_round<20:
-                target_x=self.center_x
-                target_y=self.center_y
-            else:
-                pond_dist=0
-                target_x=robot['x']
-                target_y=robot['y']
+            
+            target_x=self.center_x
+            target_y=self.center_y
 
-            p_n = self.map[n['x']][n['y']]['chemin']*pond_chemin + distance(n['x'],n['y'],target_x,target_y)*pond_dist if is_move(n) else None
-            p_s = self.map[s['x']][s['y']]['chemin']*pond_chemin + distance(s['x'],s['y'],target_x,target_y)*pond_dist if is_move(s) else None
-            p_w = self.map[w['x']][w['y']]['chemin']*pond_chemin + distance(w['x'],w['y'],target_x,target_y)*pond_dist if is_move(w) else None
-            p_e = self.map[e['x']][e['y']]['chemin']*pond_chemin + distance(e['x'],e['y'],target_x,target_y)*pond_dist if is_move(e) else None
+            p_n = ( self.map[n['x']][n['y']]['chemin']*pond_chemin + 
+                    distance(n['x'],n['y'],target_x,target_y)*pond_dist +
+                    self.get_truc(n['x'],n['y'],'case_autour')*pond_autour +
+                    self.get_truc(n['x'],n['y'],'owner')*pond_moi) if is_move(n) else None
+            p_s = (self.map[s['x']][s['y']]['chemin']*pond_chemin + 
+                   distance(s['x'],s['y'],target_x,target_y)*pond_dist +
+                    self.get_truc(s['x'],s['y'],'case_autour')*pond_autour + 
+                    self.get_truc(s['x'],s['y'],'owner')*pond_moi) if is_move(s) else None
+            p_w = (self.map[w['x']][w['y']]['chemin']*pond_chemin + 
+                   distance(w['x'],w['y'],target_x,target_y)*pond_dist +
+                    self.get_truc(w['x'],w['y'],'case_autour')*pond_autour + 
+                    self.get_truc(w['x'],w['y'],'owner')*pond_moi) if is_move(w) else None
+            p_e = (self.map[e['x']][e['y']]['chemin']*pond_chemin +
+                   distance(e['x'],e['y'],target_x,target_y)*pond_dist +
+                    self.get_truc(e['x'],e['y'],'case_autour')*pond_autour +
+                    self.get_truc(e['x'],e['y'],'owner')*pond_moi) if is_move(e) else None
             x,y=-1,-1
             if (p_n is not None and (p_s is None or p_n <= p_s ) and
                                     (p_w is None or p_n <= p_w ) and 
@@ -130,10 +140,19 @@ class Game:
                     tuple_xy.append((w['x'],w['y']))
                 tuple_xy.append((x,y))
                 self.update_chemin(tuple_xy)
-            tuple_move.update([(x,y)])
+            if x!=-1:
+                # move all units in the new cell.
+                if self.get_truc(x,y,'owner')==0 and self.get_truc(x,y,'units')>0 and self.get_truc(x,y,'units')<=robot['units']:
+                    tuple_move = set()
+                    tuple_move.update([(x,y)])
+                    break
+                tuple_move.update([(x,y)])
         ret=""
+        
         nb_units = robot['units']
-        nb_units = int(nb_units/len(tuple_move))
+        deb(robot)
+        if len(tuple_move)!=0:
+            nb_units = int(nb_units/len(tuple_move))
 
         for xm,ym in tuple_move:
             if ret:
@@ -182,7 +201,7 @@ class Game:
         #        break
         #if find:
             #ret += f"BUILD {self.center_y} {x};"
-        if lst_pond[ff]['recycler_scrap']>30:
+        if lst_pond[ff]['recycler_scrap']>nb_matter_to_build and can_i_build:
             ret += f"BUILD {lst_pond[ff]['y']} {lst_pond[ff]['x']};"
             self.my_matter-=10
             ff = 0
@@ -212,6 +231,9 @@ class Game:
             nb de case vide ou appartenant a l'adversaire
             calcul du chemin le plus court
         """
+        self.my_point=0
+        self.en_point=0
+        self.to_take=0
         tuple_xy = list()
         for i in range(self.height):
           for j in range(self.width):
@@ -243,6 +265,12 @@ class Game:
                 self.map[i][j]['chemin']=1
             else:
                 tuple_xy.append((i,j))
+            if self.get_truc(i,j,'owner')==0:
+                self.en_point+=1
+            elif self.get_truc(i,j,'owner') in (1,2):
+                self.my_point+=1
+            elif self.get_truc(i,j,'scrap_amount')>0:
+                self.to_take+=1
         self.update_chemin(tuple_xy)
 
     def update_chemin(self, tuple_xy, recurs=10):
@@ -282,7 +310,58 @@ class Game:
         
     def calcul_action(self):
         actions = ""
+        global pond_owner
+        global pond_scrap
+        global pond_chemin
+        global pond_dist
+        global pond_autour
+        global pond_moi
+        global can_i_build
+        global nb_matter_to_build
         self.calc_map()
+        condition=""
+        if self.to_take> self.en_point and self.to_take>self.my_point:
+            condition="one"
+            pond_owner = 0.5
+            pond_scrap = 1
+            pond_chemin = 0.9
+            pond_dist = 0.8
+            pond_autour = 0.6
+            pond_moi = 1.1
+            can_i_build = True
+            nb_matter_to_build = 28
+        elif self.en_point > self.my_point and len(self.en_robot)>len(self.my_robot):
+            condition="two"
+            pond_owner = 1.2
+            pond_scrap = 0.1
+            pond_chemin = 1.1
+            pond_dist = 0
+            pond_autour = 0.5
+            pond_moi = 1.1
+            can_i_build = False
+            nb_matter_to_build = 26
+        elif self.en_point>self.my_point:
+            condition="three"
+            pond_owner = 1.2
+            pond_scrap = 0.2
+            pond_chemin = 1.5
+            pond_dist = 0
+            pond_autour = 0.4
+            pond_moi = 1.1
+            can_i_build = False
+            nb_matter_to_build = 28
+        elif self.en_point <= self.my_point:
+            condition="four"
+            pond_owner = 1.6
+            pond_scrap = 0.3
+            pond_chemin = 1
+            pond_dist = 0
+            pond_autour = 0.6
+            pond_moi = 10
+            can_i_build = True
+            nb_matter_to_build = 30
+        if condition:
+            actions = f"MESSAGE {condition}"
         for r in self.my_robot:
             sep="" if actions == "" else ";"
             actions = f"{actions}{sep}{self.move_robot(r)}"

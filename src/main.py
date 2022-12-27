@@ -2,15 +2,12 @@ import sys
 import math
 
 debug = True
-debug_entry = False
+debug_entry = True
 # Auto-generated code below aims at helping you parse
 # the standard input according to the problem statement.
 
 def print_entry(str):
     if debug_entry:
-        print(str, file=sys.stderr, flush=True)
-def deb(str):
-    if debug:
         print(str, file=sys.stderr, flush=True)
 
 from game import Game
