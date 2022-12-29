@@ -63,3 +63,9 @@ def test_gain():
     game = init_data("src/test_data/test_", 15,7,10,10)
     game.nb_of_round=5
     game.calcul_action()
+
+
+def test_move():
+    game = init_data("src/test_data/test_move", 21,10,29,10)
+    game.nb_of_round=10
+    game.calcul_action()

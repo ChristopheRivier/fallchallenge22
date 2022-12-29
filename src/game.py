@@ -184,7 +184,7 @@ class Game:
                 a['x']=i
                 a['y']=j
                 a['ponderation']=pond
-                if self.get_truc(i,j,'units')==0 and self.get_truc(i,j,'recycler')==0:
+                if self.get_truc(i,j,'units')==0 and self.get_truc(i,j,'recycler')==0 and self.get_truc(i,j,'scrap_amount')>3:
                     a['recycler_scrap']=self.get_truc(i,j,'recycler_scrap')
                 else:
                     a['recycler_scrap']=0
@@ -234,6 +234,7 @@ class Game:
         self.my_point=0
         self.en_point=0
         self.to_take=0
+        self.nb_my_recycler = 0
         tuple_xy = list()
         for i in range(self.height):
           for j in range(self.width):
@@ -269,6 +270,8 @@ class Game:
                 self.en_point+=1
             elif self.get_truc(i,j,'owner') in (1,2):
                 self.my_point+=1
+                if self.get_truc(i,j,'recycler')==1:
+                    self.nb_my_recycler+=1
             elif self.get_truc(i,j,'scrap_amount')>0:
                 self.to_take+=1
         self.update_chemin(tuple_xy)
@@ -328,8 +331,11 @@ class Game:
             pond_dist = 0.8
             pond_autour = 0.6
             pond_moi = 1.1
-            can_i_build = True
-            nb_matter_to_build = 28
+            if self.nb_my_recycler<len(self.my_robot)/4:
+                can_i_build = True
+            else:
+                can_i_build = False
+            nb_matter_to_build = 27
         elif self.en_point > self.my_point and len(self.en_robot)>len(self.my_robot):
             condition="two"
             pond_owner = 1.2
@@ -342,15 +348,15 @@ class Game:
             nb_matter_to_build = 26
         elif self.en_point>self.my_point:
             condition="three"
-            pond_owner = 1.2
+            pond_owner = 1.5
             pond_scrap = 0.2
-            pond_chemin = 1.5
+            pond_chemin = 1.4 
             pond_dist = 0
-            pond_autour = 0.4
-            pond_moi = 1.1
+            pond_autour = 0.3
+            pond_moi = 1.2
             can_i_build = False
             nb_matter_to_build = 28
-        elif self.en_point <= self.my_point:
+        elif self.en_point < self.my_point:
             condition="four"
             pond_owner = 1.6
             pond_scrap = 0.3
@@ -364,7 +370,9 @@ class Game:
             actions = f"MESSAGE {condition}"
         for r in self.my_robot:
             sep="" if actions == "" else ";"
-            actions = f"{actions}{sep}{self.move_robot(r)}"
+            move = self.move_robot(r)
+            if move:
+                actions = f"{actions}{sep}{move}"
         if actions=="":
             actions = "WAIT"
         if self.my_matter>=10:
