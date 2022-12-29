@@ -1,15 +1,17 @@
 
 import sys #exclude
 import math #exclude
-pond_owner = -0.5
+pond_owner = 0.5
 pond_scrap = 1
-pond_chemin = 1
-pond_dist = 0.5
-pond_autour = 0.4
-pond_moi = -1
+pond_en = -1
+pond_chemin = 0.9
+pond_dist = 0.8
+pond_autour = 0.6
+pond_moi = 1.1
 can_i_build = False
-nb_matter_to_build = 25
+nb_matter_to_build = 27
 debug = True #exclude
+debug_map = True
 
 def distance(x,y, x1,y1):
     return math.sqrt((x-x1)**2+(y-y1)**2)
@@ -17,6 +19,13 @@ def deb(str):
     if debug:
         print(str, file=sys.stderr, flush=True)
 class Game:
+    def print_map(self, truc):
+        if debug_map:
+            for i in range(self.height):
+                line=""
+                for j in range(self.width):
+                    line = f"{line} {self.map[i][j][truc]:03}"
+                print(line, file=sys.stderr, flush=True)
     def __init__(self, w, h):    
         self.width = w
         self.height = h
@@ -67,17 +76,18 @@ class Game:
         ret = 0
         if self.cell_attaquable(brick):
             if brick['owner']==0:
-                ret += brick['units']*pond_owner
+                ret += brick['units']*pond_owner + pond_en
             else:
                 ret += brick['scrap_amount'] * pond_scrap
         return ret
 
-    def move_robot(self, robot):
+    def move_robot(self, robot, element):
         def is_move(b):
             return b and self.map[b['x']][b['y']]['scrap_amount']>0 and self.map[b['x']][b['y']]['recycler']==0
         # find best move
+        robot_units = robot['units'] # self.get_truc(robot['x'],robot['y'],'units')
         tuple_move = set()
-        for num_robot in range(robot['units']):
+        for num_robot in range(robot_units):
             n = self.getNorth(robot['x'], robot['y'])
             s = self.getSouth(robot['x'], robot['y'])
             w = self.getWest(robot['x'], robot['y'])
@@ -86,19 +96,19 @@ class Game:
             target_x=self.center_x
             target_y=self.center_y
 
-            p_n = ( self.map[n['x']][n['y']]['chemin']*pond_chemin + 
+            p_n = ( self.map[n['x']][n['y']][element]*pond_chemin + 
                     distance(n['x'],n['y'],target_x,target_y)*pond_dist +
                     self.get_truc(n['x'],n['y'],'case_autour')*pond_autour +
                     self.get_truc(n['x'],n['y'],'owner')*pond_moi) if is_move(n) else None
-            p_s = (self.map[s['x']][s['y']]['chemin']*pond_chemin + 
+            p_s = (self.map[s['x']][s['y']][element]*pond_chemin + 
                    distance(s['x'],s['y'],target_x,target_y)*pond_dist +
                     self.get_truc(s['x'],s['y'],'case_autour')*pond_autour + 
                     self.get_truc(s['x'],s['y'],'owner')*pond_moi) if is_move(s) else None
-            p_w = (self.map[w['x']][w['y']]['chemin']*pond_chemin + 
+            p_w = (self.map[w['x']][w['y']][element]*pond_chemin + 
                    distance(w['x'],w['y'],target_x,target_y)*pond_dist +
                     self.get_truc(w['x'],w['y'],'case_autour')*pond_autour + 
                     self.get_truc(w['x'],w['y'],'owner')*pond_moi) if is_move(w) else None
-            p_e = (self.map[e['x']][e['y']]['chemin']*pond_chemin +
+            p_e = (self.map[e['x']][e['y']][element]*pond_chemin +
                    distance(e['x'],e['y'],target_x,target_y)*pond_dist +
                     self.get_truc(e['x'],e['y'],'case_autour')*pond_autour +
                     self.get_truc(e['x'],e['y'],'owner')*pond_moi) if is_move(e) else None
@@ -120,44 +130,78 @@ class Game:
                                     (p_n is None or p_w<=p_n)):
                 x,y = self.get_pos_w(robot)
             # need to store where I go to
-            if x!=-1 and self.map[x][y]['chemin']==0:
-                # need to recalculate position
-                self.map[x][y]['chemin']=None
-
-                self.map[x][y]['owner']=2
-                tuple_xy = list()
-                if n:
-                    self.map[n['x']][n['y']]['chemin']=None
-                    tuple_xy.append((n['x'],n['y']))
-                if s:
-                    self.map[s['x']][s['y']]['chemin']=None
-                    tuple_xy.append((s['x'],s['y']))
-                if e:
-                    self.map[e['x']][e['y']]['chemin']=None
-                    tuple_xy.append((e['x'],e['y']))
-                if w:
-                    self.map[w['x']][w['y']]['chemin']=None
-                    tuple_xy.append((w['x'],w['y']))
-                tuple_xy.append((x,y))
-                self.update_chemin(tuple_xy)
+            unit_needed = 0
+            if x!=-1 and self.map[x][y][element]==0:
+                if element == 'chemin':
+                    # need to recalculate position
+                    if self.map[x][y]['units']<robot_units:
+                        self.map[x][y][element]=None
+                        self.map[x][y]['owner']=2
+                        tuple_xy = list()
+                        if n:
+                            self.map[n['x']][n['y']][element]=None
+                            tuple_xy.append((n['x'],n['y']))
+                        if s:
+                            self.map[s['x']][s['y']][element]=None
+                            tuple_xy.append((s['x'],s['y']))
+                        if e:
+                            self.map[e['x']][e['y']][element]=None
+                            tuple_xy.append((e['x'],e['y']))
+                        if w:
+                            self.map[w['x']][w['y']][element]=None
+                            tuple_xy.append((w['x'],w['y']))
+                        tuple_xy.append((x,y))
+                        self.update_chemin(tuple_xy)
+                        unit_needed = self.map[x][y]['units']
+                    elif self.map[x][y]['units']>=robot_units:
+                        unit_needed = robot_units
             if x!=-1:
                 # move all units in the new cell.
-                if self.get_truc(x,y,'owner')==0 and self.get_truc(x,y,'units')>0 and self.get_truc(x,y,'units')<=robot['units']:
+                if self.get_truc(x,y,'owner')==0 and self.get_truc(x,y,'units')>0 and self.get_truc(x,y,'units')<=robot_units:
                     tuple_move = set()
-                    tuple_move.update([(x,y)])
+                    tuple_move.update([(x,y,unit_needed)])
                     break
-                tuple_move.update([(x,y)])
+                tuple_move.update([(x,y,unit_needed)])
         ret=""
         
-        nb_units = robot['units']
-        deb(robot)
-        if len(tuple_move)!=0:
-            nb_units = int(nb_units/len(tuple_move))
+        need_unit = 0
+        nb_not_null = 0
+        for xm,ym,ne in tuple_move:
+            if ne==0:
+                nb_not_null += 1
+            need_unit += ne
+        nb_units = robot_units
+        if need_unit < nb_units:
+            nb_units -= need_unit
 
-        for xm,ym in tuple_move:
-            if ret:
-                ret = f"{ret};"
-            ret = f"{ret}MOVE {nb_units} {robot['y']} {robot['x']} {ym} {xm}"
+        if nb_not_null!=0:
+            nb_units = int(nb_units/nb_not_null)
+
+        if element == 'chemin':
+            for xm,ym,ne in tuple_move:
+                if ret:
+                    ret = f"{ret};"
+                a = nb_units
+                if ne:
+                    a = ne
+                ret = f"{ret}MOVE {a} {robot['y']} {robot['x']} {ym} {xm}"
+        else:
+            for xm,ym, ne in tuple_move:
+                brick = self.map[xm][ym]
+                a = nb_units
+                if ne:
+                    a = ne
+                if brick['owner']==1:
+                    if brick['units']<a:
+                        brick['units'] = a-brick['units']
+                        brick['owner'] = 0
+                    else:
+                        brick['units'] = brick['units'] - a
+                    self.map[robot['x']][robot['y']]['units'] -= a
+                else:
+                    brick['units'] += a
+                    self.map[robot['x']][robot['y']]['units'] -= a 
+
         return ret
 
     def get_build(self):
@@ -219,11 +263,23 @@ class Game:
         if brick and self.cell_attaquable(brick):
             ret+=1
         return ret
+    def get_nb_case_interessante_en(self, brick)-> int:
+        ret = 0
+        if brick and self.cell_attaquable_en(brick):
+            ret+=1
+        return ret
     def get_truc(self, x, y, truc):
         return self.map[x][y][truc]
 
+    def add_truc(self, x, y, truc, val):
+        if truc not in self.map[x][y] or self.map[x][y][truc] is None:
+            self.map[x][y][truc] = val
+
     def cell_attaquable(self, brick):
         return brick['owner']!=1 and brick['recycler']==0 and brick['scrap_amount']>0
+    def cell_attaquable_en(self, brick):
+        return brick['owner']!=0 and brick['recycler']==0 and brick['scrap_amount']>0
+
 
     def calc_map(self):
         """ Calcul de distance entre la zone qui m'appartient et la zone vide ou adversaire 
@@ -235,26 +291,31 @@ class Game:
         self.en_point=0
         self.to_take=0
         self.nb_my_recycler = 0
-        tuple_xy = list()
+        tuple_xy = set()
         for i in range(self.height):
           for j in range(self.width):
             nb_case_interessante=0
+            nb_case_interessante_en=0
             scrap = 0
             if self.getNorth(i,j):
                 b=self.getNorth(i,j)
                 nb_case_interessante += self.get_nb_case_interessante(b)
+                nb_case_interessante_en += self.get_nb_case_interessante_en(b)
                 scrap += self.get_truc(b['x'],b['y'],'scrap_amount')
             if self.getSouth(i,j):
                 b=self.getSouth(i,j)
                 nb_case_interessante += self.get_nb_case_interessante(b)
+                nb_case_interessante_en += self.get_nb_case_interessante_en(b)
                 scrap += self.get_truc(b['x'],b['y'],'scrap_amount')
             if self.getEast(i,j):
                 b=self.getEast(i,j)
                 nb_case_interessante += self.get_nb_case_interessante(b)
+                nb_case_interessante_en += self.get_nb_case_interessante_en(b)
                 scrap += self.get_truc(b['x'],b['y'],'scrap_amount')
             if self.getWest(i,j) :
                 b=self.getWest(i,j)
                 nb_case_interessante += self.get_nb_case_interessante(b)
+                nb_case_interessante_en += self.get_nb_case_interessante_en(b)
                 scrap += self.get_truc(b['x'],b['y'],'scrap_amount')
             self.map[i][j]['case_autour']=nb_case_interessante
             self.map[i][j]['recycler_scrap']=scrap
@@ -265,7 +326,16 @@ class Game:
             elif nb_case_interessante>0:
                 self.map[i][j]['chemin']=1
             else:
-                tuple_xy.append((i,j))
+                tuple_xy.update([(i,j)])
+            if self.cell_attaquable_en(self.map[i][j]):
+                self.map[i][j]['chemin_en']=0
+            elif self.map[i][j]['recycler']==1 or self.map[i][j]['scrap_amount']==0:
+                self.map[i][j]['chemin_en']=100
+            elif nb_case_interessante_en>0:
+                self.map[i][j]['chemin_en']=1
+            else:
+                tuple_xy.update([(i,j)])
+
             if self.get_truc(i,j,'owner')==0:
                 self.en_point+=1
             elif self.get_truc(i,j,'owner') in (1,2):
@@ -279,54 +349,83 @@ class Game:
     def update_chemin(self, tuple_xy, recurs=10):
         def is_move(b):
             return b and b['scrap_amount']>0 and b['recycler']==0
- 
-        autre_list = list()
+        def get_chemin(element,brick,chem):
+            if(is_move(brick) and element in brick):
+                cc = brick[element]
+                if cc:
+                    chem = cc+1 if chem is None or chem>cc else chem
+            return chem
+
+        autre_list = set()
         for i,j in tuple_xy:
             chemin=None
+            chemin_en=None
             if self.getNorth(i,j):
-                if(is_move(self.getNorth(i,j)) and 'chemin' in self.getNorth(i,j)):
-                    cc = self.getNorth(i,j)['chemin']
-                    chemin = cc+1 if chemin is None or chemin>cc else chemin
+                chemin = get_chemin('chemin',self.getNorth(i,j), chemin)
+                chemin_en = get_chemin('chemin_en',self.getNorth(i,j), chemin_en)
             if self.getSouth(i,j):
-                if(is_move(self.getSouth(i,j)) and 'chemin' in self.getSouth(i,j)):
-                    cc = self.getSouth(i,j)['chemin']
-                    chemin = cc+1 if chemin is None or chemin>cc else chemin
+                chemin = get_chemin('chemin', self.getSouth(i,j), chemin)
+                chemin_en = get_chemin('chemin_en', self.getSouth(i,j), chemin_en)
             if self.getEast(i,j):
-                if(is_move(self.getEast(i,j)) and 'chemin' in self.getEast(i,j)):
-                    cc = self.getEast(i,j)['chemin']
-                    chemin = cc+1 if chemin is None or chemin>cc else chemin
+                chemin = get_chemin('chemin', self.getEast(i,j), chemin)
+                chemin_en = get_chemin('chemin_en', self.getEast(i,j), chemin_en)
             if self.getWest(i,j) :
-                if(is_move(self.getWest(i,j)) and 'chemin' in self.getWest(i,j)):
-                    cc = self.getWest(i,j)['chemin']
-                    chemin = cc+1 if chemin is None or chemin>cc else chemin
+                chemin = get_chemin('chemin', self.getWest(i,j), chemin)
+                chemin_en = get_chemin('chemin_en', self.getWest(i,j), chemin_en)
             if chemin:
-                self.map[i][j]['chemin']=chemin
+                self.add_truc(i, j, 'chemin', chemin)
+
             else:
-                autre_list.append((i,j))
+                autre_list.update([(i,j)])
+            if chemin_en:
+                self.add_truc(i, j, 'chemin_en', chemin_en)
+            else:
+                autre_list.update([(i,j)])
         recurs -= 1
         if autre_list and recurs>0:
             self.update_chemin(autre_list, recurs)
         else:
             for i,j in tuple_xy:
-                self.map[i][j]['chemin']=10
+                self.add_truc(i, j, 'chemin', 10)
+                self.add_truc(i, j, 'chemin_en', 10)
 
         
     def calcul_action(self):
         actions = ""
         global pond_owner
         global pond_scrap
+        global pond_en
         global pond_chemin
         global pond_dist
         global pond_autour
         global pond_moi
         global can_i_build
         global nb_matter_to_build
+
+        # calcul deplacement ennemy
         self.calc_map()
+        self.print_map('units')
+        for r in self.en_robot:
+            sep="" if actions == "" else ";"
+            self.move_robot(r, 'chemin_en')
+        # clean chemin
+
+        self.print_map('units')
+        for i in range(self.height):
+          for j in range(self.width):
+            self.map[i][j]['chemin']=None
+            self.map[i][j]['chemin_en']=None
+
+        # calc again with the move of ennemy
+        self.calc_map()
+
+        self.print_map('units')
         condition=""
         if self.to_take> self.en_point and self.to_take>self.my_point:
             condition="one"
             pond_owner = 0.5
             pond_scrap = 1
+            pond_en = 0
             pond_chemin = 0.9
             pond_dist = 0.8
             pond_autour = 0.6
@@ -338,18 +437,20 @@ class Game:
             nb_matter_to_build = 27
         elif self.en_point > self.my_point and len(self.en_robot)>len(self.my_robot):
             condition="two"
-            pond_owner = 1.2
+            pond_owner = 1.6
             pond_scrap = 0.1
+            pond_en = 0
             pond_chemin = 1.1
             pond_dist = 0
-            pond_autour = 0.5
-            pond_moi = 1.1
+            pond_autour = 0.1
+            pond_moi = 1
             can_i_build = False
             nb_matter_to_build = 26
         elif self.en_point>self.my_point:
             condition="three"
-            pond_owner = 1.5
-            pond_scrap = 0.2
+            pond_owner = 1
+            pond_scrap = 0.1
+            pond_en = 2
             pond_chemin = 1.4 
             pond_dist = 0
             pond_autour = 0.3
@@ -360,6 +461,7 @@ class Game:
             condition="four"
             pond_owner = 1.6
             pond_scrap = 0.3
+            pond_en = 2
             pond_chemin = 1
             pond_dist = 0
             pond_autour = 0.6
@@ -370,9 +472,11 @@ class Game:
             actions = f"MESSAGE {condition}"
         for r in self.my_robot:
             sep="" if actions == "" else ";"
-            move = self.move_robot(r)
-            if move:
-                actions = f"{actions}{sep}{move}"
+            if self.get_truc(r['x'],r['y'],'owner')==1:
+                r['units'] = self.get_truc(r['x'],r['y'],'units')
+                move = self.move_robot(r, 'chemin')
+                if move:
+                    actions = f"{actions}{sep}{move}"
         if actions=="":
             actions = "WAIT"
         if self.my_matter>=10:
