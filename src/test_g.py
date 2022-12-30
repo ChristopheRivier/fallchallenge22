@@ -72,7 +72,7 @@ def test_move():
 
 
 def test_chemin():
-    game = init_data("src/test_data/test_chemin", 22,11,18,10)
+    game = init_data("src/test_data/test_chemin", 18,9,18,10)
     game.nb_of_round=42
     game.calcul_action()
     assert False

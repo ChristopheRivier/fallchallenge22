@@ -209,6 +209,17 @@ class Game:
             return el['ponderation']
         def get_recycler(el):
             return el['recycler_scrap']
+        def ponderation_scrap_amount(brick):
+            if brick is None:
+                return 0
+            ret = 0
+            if brick['owner']==0 and brick['units']>0:
+                ret += 15
+            elif brick['owner']==1 and brick['units']>0:
+                ret -= 8
+            else:
+                ret += brick['scrap_amount']
+            return ret
         # find where to create new robot
         lst_pond = list()
         for i in range(self.height):
@@ -216,43 +227,41 @@ class Game:
             if self.map[i][j]['owner']==1:
                 # calcul a ponderation for the each cell.
                 pond = 0
+                p_scrap = 0
                 if self.getNorth(i,j) is not None:
                     pond += self.ponderation(self.getNorth(i,j))
+                    p_scrap += ponderation_scrap_amount(self.getNorth(i,j))
                 if self.getSouth(i,j) is not None:
                     pond += self.ponderation(self.getSouth(i,j))
+                    p_scrap += ponderation_scrap_amount(self.getSouth(i,j))
                 if self.getEast(i,j) is not None:
                     pond += self.ponderation(self.getEast(i,j))
+                    p_scrap += ponderation_scrap_amount(self.getEast(i,j))
                 if self.getWest(i,j) is not None:
                     pond += self.ponderation(self.getWest(i,j))
+                    p_scrap += ponderation_scrap_amount(self.getWest(i,j))
                 a = {}
                 a['x']=i
                 a['y']=j
                 a['ponderation']=pond
                 if self.get_truc(i,j,'units')==0 and self.get_truc(i,j,'recycler')==0 and self.get_truc(i,j,'scrap_amount')>3:
-                    a['recycler_scrap']=self.get_truc(i,j,'recycler_scrap')
+                    a['recycler_scrap']=p_scrap
                 else:
                     a['recycler_scrap']=0
                 lst_pond.append(a)
         lst_pond.sort(key=get_recycler,reverse=True)
         # do we have the middle of the map
-        find = True
         ret = ""
         ff = 0
-        #for x in range(self.height):
-        #    brick = self.map[x][self.center_y]
-        #    if brick['owner']==1 and brick['units']==0 and brick['recycler']==0:
-        #        find=True
-        #        break
-        #if find:
-            #ret += f"BUILD {self.center_y} {x};"
         if lst_pond[ff]['recycler_scrap']>nb_matter_to_build and can_i_build:
-            ret += f"BUILD {lst_pond[ff]['y']} {lst_pond[ff]['x']};"
+            ret = f"BUILD {lst_pond[ff]['y']} {lst_pond[ff]['x']}"
             self.my_matter-=10
             ff = 0
             lst_pond.pop(0)
         lst_pond.sort(key=get_ponderation,reverse=True)
         while self.my_matter>=10:
-            ret = f"{ret}SPAWN 1 {lst_pond[ff]['y']} {lst_pond[ff]['x']};"
+            sep="" if ret == "" else ";"
+            ret = f"{ret}{sep}SPAWN 1 {lst_pond[ff]['y']} {lst_pond[ff]['x']}"
             ff += 1
             self.my_matter-=10
 
@@ -424,12 +433,12 @@ class Game:
         if self.to_take> self.en_point and self.to_take>self.my_point:
             condition="one"
             pond_owner = 0.5
-            pond_scrap = 1
-            pond_en = 0
-            pond_chemin = 0.9
-            pond_dist = 0.8
-            pond_autour = 0.6
-            pond_moi = 1.1
+            pond_scrap = 0.2
+            pond_en = 0.5
+            pond_chemin = 1.1
+            pond_dist = 0.3
+            pond_autour = 0.2
+            pond_moi = 2
             if self.nb_my_recycler<len(self.my_robot)/4:
                 can_i_build = True
             else:
@@ -437,13 +446,13 @@ class Game:
             nb_matter_to_build = 27
         elif self.en_point > self.my_point and len(self.en_robot)>len(self.my_robot):
             condition="two"
-            pond_owner = 1.6
+            pond_owner = 1.2
             pond_scrap = 0.1
-            pond_en = 0
+            pond_en = 0.5
             pond_chemin = 1.1
             pond_dist = 0
             pond_autour = 0.1
-            pond_moi = 1
+            pond_moi = 1.1
             can_i_build = False
             nb_matter_to_build = 26
         elif self.en_point>self.my_point:
@@ -460,7 +469,7 @@ class Game:
         elif self.en_point < self.my_point:
             condition="four"
             pond_owner = 1.6
-            pond_scrap = 0.3
+            pond_scrap = 0
             pond_en = 2
             pond_chemin = 1
             pond_dist = 0
@@ -470,6 +479,10 @@ class Game:
             nb_matter_to_build = 30
         if condition:
             actions = f"MESSAGE {condition}"
+        if self.my_matter>=10:
+            sep = "" if actions =="" else ";"
+            actions = f"{self.get_build()}{sep}{actions}"
+
         for r in self.my_robot:
             sep="" if actions == "" else ";"
             if self.get_truc(r['x'],r['y'],'owner')==1:
@@ -479,7 +492,5 @@ class Game:
                     actions = f"{actions}{sep}{move}"
         if actions=="":
             actions = "WAIT"
-        if self.my_matter>=10:
-            actions = f"{self.get_build()}{actions}"
         print(actions)
 
