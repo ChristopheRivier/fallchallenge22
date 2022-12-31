@@ -75,4 +75,10 @@ def test_chemin():
     game = init_data("src/test_data/test_chemin", 18,9,18,10)
     game.nb_of_round=42
     game.calcul_action()
+
+
+def test_spawn2():
+    game = init_data("src/test_data/test_spawn2", 15,7,140,23)
+    game.nb_of_round=42
+    game.calcul_action()
     assert False
