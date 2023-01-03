@@ -33,6 +33,7 @@ class Game:
         self.nb_of_round = 0
         self.center_x = int(self.height/2)
         self.center_y = int(self.width/2)
+        self.attaque = dict()
 
     def init_round(self, m, r, r_e,matter,op_matt):
         self.my_robot = r
@@ -99,9 +100,14 @@ class Game:
             else:
                 return None
         # find best move
-        robot_units = robot['units'] # self.get_truc(robot['x'],robot['y'],'units')
+        robot_units = self.get_truc(robot['x'],robot['y'],'units')
+        aa = f"{robot['x']}{robot['y']}"
+        nb_of_check = robot_units
+        if aa in self.attaque and self.attaque[aa].get('nb_tour')>3 and element=='chemin':
+            # test if brick already attaque same time.
+            nb_of_check = 1
         tuple_move = set()
-        for num_robot in range(robot_units):
+        for num_robot in range(nb_of_check):
             n = self.getNorth(robot['x'], robot['y'])
             s = self.getSouth(robot['x'], robot['y'])
             w = self.getWest(robot['x'], robot['y'])
@@ -173,10 +179,10 @@ class Game:
                 nb_not_null += 1
             need_unit += ne
         nb_units = robot_units
-        if need_unit < nb_units:
+        if need_unit < nb_units and nb_not_null:
             nb_units -= need_unit
 
-        if nb_not_null!=0:
+        if nb_not_null:
             nb_units = int(nb_units/nb_not_null)
 
         if element == 'chemin':
@@ -184,7 +190,7 @@ class Game:
                 if ret:
                     ret = f"{ret};"
                 a = nb_units
-                if ne:
+                if ne and nb_not_null:
                     a = ne
                 ret = f"{ret}MOVE {a} {robot['y']} {robot['x']} {ym} {xm}"
         else:
@@ -194,15 +200,26 @@ class Game:
                 if ne:
                     a = ne
                 if brick['owner']==1:
-                    if brick['units']<a:
-                        brick['units'] = a-brick['units']
-                        brick['owner'] = 0
-                    else:
-                        brick['units'] = brick['units'] - a
-                    self.map[robot['x']][robot['y']]['units'] -= a
+                    # need to store what is delete
+                    aa = f"{brick['x']}{brick['y']}"
+                    nb_tour = 1
+                    autre = a
+                    if aa in self.attaque and self.attaque[aa].get('round')>=self.nb_of_round-1:
+                        nb_tour = self.attaque[aa].get('nb_tour')+1
+                        autre += self.attaque[aa].get('units')
+
+                    self.attaque[aa] = {'nb_tour':nb_tour, 'round':self.nb_of_round, 'units': autre}
+                    if nb_tour<=3:
+                        if brick['units']<a:
+                            brick['units'] = a-brick['units']
+                            brick['owner'] = 0
+                        else:
+                            brick['units'] = brick['units'] - a
+                        self.map[robot['x']][robot['y']]['units'] -= a
                 else:
                     brick['units'] += a
                     self.map[robot['x']][robot['y']]['units'] -= a 
+                    brick['owner'] = 0
 
         return ret
 
@@ -400,7 +417,7 @@ class Game:
                 self.add_truc(i, j, 'chemin_en', 10)
 
         
-    def calcul_action(self):
+    def get_action(self):
         actions = ""
         global pond_owner
         global pond_scrap
@@ -421,7 +438,7 @@ class Game:
             condition="one"
             pond_owner = 0.4
             pond_scrap = 0.2
-            pond_en = 0.5
+            pond_en = 1
             pond_chemin = 1.7
             if self.nb_of_round<(self.width+1/2):
                 pond_dist = 0.6
@@ -451,7 +468,7 @@ class Game:
             condition="three"
             pond_owner = 1
             pond_scrap = 0.1
-            pond_en = 2
+            pond_en = 4
             pond_chemin = 1.4 
             pond_dist = 0
             pond_autour = 0.3
@@ -463,7 +480,7 @@ class Game:
             condition="four"
             pond_owner = 0.7
             pond_scrap = 0
-            pond_en = 2
+            pond_en = 4
             pond_chemin = 1.2
             pond_dist = 0
             pond_autour = 0
@@ -509,5 +526,8 @@ class Game:
                     actions = f"{actions}{sep}{move}"
         if actions=="":
             actions = "WAIT"
-        print(actions)
+        return actions
+
+    def calcul_action(self):    
+        print(self.get_action())
 

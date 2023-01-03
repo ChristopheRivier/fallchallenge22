@@ -82,3 +82,22 @@ def test_spawn2():
     game.nb_of_round=42
     game.calcul_action()
     assert False
+
+def test_deplacement():
+    #seed=6772313716882704000
+
+    game = init_data("src/test_data/test_deplacement", 14,7,18,14)
+    game.attaque['36'] = {'nb_tour':4, 'round':23, 'units': 2}
+    game.nb_of_round=23
+    ret = game.get_action()
+    assert ret == 'SPAWN 1 6 3;MESSAGE three;MOVE 3 6 3 6 2'
+
+
+def test_deplacement():
+    #seed=2810236576456295000
+
+    game = init_data("src/test_data/test_apparition", 13,6,18,14)
+    game.nb_of_round=25
+    ret = game.get_action()
+    assert 'SPAWN 1 7 3' in ret
+
