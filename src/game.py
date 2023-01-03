@@ -419,15 +419,18 @@ class Game:
         condition=""
         if self.to_take> self.en_point and self.to_take>self.my_point:
             condition="one"
-            pond_owner = 0.5
+            pond_owner = 0.4
             pond_scrap = 0.2
             pond_en = 0.5
-            pond_chemin = 1.5
-            pond_dist = 0.6
+            pond_chemin = 1.7
+            if self.nb_of_round<(self.width+1/2):
+                pond_dist = 0.6
+            else:
+                pond_dist=0
             pond_autour = 0.2
             pond_moi = 2
-            pond_unit_enemy = 0
-            if self.nb_my_recycler<len(self.my_robot)/4:
+            pond_unit_enemy = 0.1
+            if self.nb_my_recycler<(len(self.my_robot)/4):
                 can_i_build = True
             else:
                 can_i_build = False
@@ -453,15 +456,15 @@ class Game:
             pond_dist = 0
             pond_autour = 0.3
             pond_moi = 1.2
-            pond_unit_enemy = 0.8
+            pond_unit_enemy = 2
             can_i_build = False
             nb_matter_to_build = 28
         elif self.en_point < self.my_point:
             condition="four"
-            pond_owner = 0.8
+            pond_owner = 0.7
             pond_scrap = 0
             pond_en = 2
-            pond_chemin = 1.3
+            pond_chemin = 1.2
             pond_dist = 0
             pond_autour = 0
             pond_moi = 10
